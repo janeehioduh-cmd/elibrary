@@ -8,7 +8,14 @@ $db = new Database();
 $conn = $db->connect();
 
 $book = new Book($conn);
-$books = $book->getAllBooks();
+
+$search = trim($_GET['search'] ?? '');
+
+if ($search !== '') {
+    $books = $book->searchBooks($search);
+} else {
+    $books = $book->getAllBooks();
+}
 ?>
 
 <!DOCTYPE html>
@@ -55,7 +62,6 @@ $books = $book->getAllBooks();
 
     </nav>
 
-
     <!-- PAGE HEADER -->
     <section class="catalogue-hero">
 
@@ -67,74 +73,118 @@ $books = $book->getAllBooks();
 
     </section>
 
-
     <!-- BOOK COLLECTION -->
     <section class="section books-section">
 
-        <div class="book-grid">
+        <!-- SEARCH FORM -->
+        <form method="GET" action="books.php" class="search-form">
 
-            <?php foreach ($books as $row): ?>
+            <input
+                type="text"
+                name="search"
+                placeholder="Search by book title or author..."
+                value="<?php echo htmlspecialchars($search); ?>"
+            >
 
-                <div class="book-card">
+            <button type="submit">Search</button>
 
-                    <div class="book-icon">📚</div>
+        </form>
 
-                    <h3>
-                        <?php echo htmlspecialchars($row['title']); ?>
-                    </h3>
+        <?php if (count($books) > 0): ?>
+
+            <div class="book-grid">
+
+                <?php foreach ($books as $row): ?>
+
+                    <div class="book-card">
+
+                        <div class="book-icon">📚</div>
+
+                        <h3>
+                            <?php echo htmlspecialchars($row['title']); ?>
+                        </h3>
+
+                        <p>
+                            <strong>Author:</strong>
+                            <?php echo htmlspecialchars($row['author']); ?>
+                        </p>
+
+                        <p>
+                            <strong>Category:</strong>
+
+                            <?php
+                            echo htmlspecialchars(
+                                $row['category_name'] ?? 'Uncategorized'
+                            );
+                            ?>
+                        </p>
+
+                        <p>
+                            <?php
+                            echo htmlspecialchars($row['description'] ?? '');
+                            ?>
+                        </p>
+
+                        <p>
+                            <strong>Status:</strong>
+
+                            <?php if ($row['is_available']): ?>
+
+                                <span class="available">Available</span>
+
+                            <?php else: ?>
+
+                                <span class="unavailable">Unavailable</span>
+
+                            <?php endif; ?>
+
+                        </p>
+
+                        <a
+                            href="book.php?id=<?php echo (int) $row['id']; ?>"
+                            class="book-link"
+                        >
+                            View Book Details
+                        </a>
+
+                    </div>
+
+                <?php endforeach; ?>
+
+            </div>
+
+        <?php else: ?>
+
+            <div class="details-card">
+
+                <h2>No Books Found</h2>
+
+                <?php if ($search !== ''): ?>
 
                     <p>
-                        <strong>Author:</strong>
-
-                        <?php echo htmlspecialchars($row['author']); ?>
+                        We couldn't find any books matching
+                        "<?php echo htmlspecialchars($search); ?>".
+                        Try another title or author's name.
                     </p>
+
+                <?php else: ?>
 
                     <p>
-                        <strong>Category:</strong>
-
-                        <?php
-                        echo htmlspecialchars(
-                            $row['category_name'] ?? 'Uncategorized'
-                        );
-                        ?>
+                        There are currently no books in our catalogue.
+                        Please check back later.
                     </p>
 
-                    <p>
-                        <?php
-                        echo htmlspecialchars($row['description'] ?? '');
-                        ?>
-                    </p>
+                <?php endif; ?>
 
-                    <p>
-                        <strong>Status:</strong>
+                <a href="books.php" class="book-link">
+                    View All Books
+                </a>
 
-                        <?php if ($row['is_available']): ?>
+            </div>
 
-                            <span class="available">Available</span>
-
-                        <?php else: ?>
-
-                            <span class="unavailable">Unavailable</span>
-
-                        <?php endif; ?>
-
-                    </p>
-
-                    <a
-                        href="book.php?id=<?php echo (int) $row['id']; ?>"
-                        class="book-link"
-                    >
-                        View Book Details
-                    </a>
-
-                </div>
-
-            <?php endforeach; ?>
-
-        </div>
+        <?php endif; ?>
 
     </section>
-
 
     <!-- FOOTER -->
     <footer class="site-footer">

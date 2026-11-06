@@ -53,92 +53,19 @@ if ($member->emailExists($email)) {
     die("This email address is already registered.");
 }
 
-
-// PROFILE PICTURE UPLOAD
-$profileImage = null;
-$uploadedFilePath = null;
-
-if (isset($_FILES['profile_image']) &&
-    $_FILES['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
-
-    $file = $_FILES['profile_image'];
-
-    // Check upload errors
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        die("Profile picture upload failed. Please try again.");
-    }
-
-    // Maximum file size: 2 MB
-    if ($file['size'] > 2 * 1024 * 1024) {
-        die("Profile picture must not exceed 2 MB.");
-    }
-
-    // Check actual image type
-    $imageInfo = getimagesize($file['tmp_name']);
-
-    if ($imageInfo === false) {
-        die("Please upload a valid image.");
-    }
-
-    // Detect MIME type
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
-
-    // Allowed image formats
-    $allowedTypes = [
-        'image/jpeg' => 'jpg',
-        'image/png' => 'png',
-        'image/webp' => 'webp'
-    ];
-
-    if (
-        !isset($allowedTypes[$mimeType]) ||
-        $imageInfo['mime'] !== $mimeType
-    ) {
-        die("Only JPG, PNG and WEBP images are allowed.");
-    }
-
-    // Generate a unique filename
-    $extension = $allowedTypes[$mimeType];
-
-    $profileImage = bin2hex(random_bytes(16)) . "." . $extension;
-
-    // Upload destination
-    $uploadDirectory = __DIR__ . "/../uploads/profiles/";
-
-    if (!is_dir($uploadDirectory) ||
-        !is_writable($uploadDirectory)) {
-        die("Profile picture folder is not available.");
-    }
-
-    $uploadedFilePath = $uploadDirectory . $profileImage;
-
-    // Move uploaded image
-    if (!move_uploaded_file($file['tmp_name'], $uploadedFilePath)) {
-        die("Unable to save profile picture.");
-    }
-}
-
-
-// REGISTER MEMBER
+// Register member without a profile picture
 if ($member->register(
     $name,
     $email,
     $phone,
     $password,
-    $profileImage
+    null
 )) {
 
     header("Location: ../login.php");
     exit();
 
 } else {
-
-    // Delete uploaded image if registration fails
-    if ($uploadedFilePath && file_exists($uploadedFilePath)) {
-        unlink($uploadedFilePath);
-    }
 
     die("Registration failed. Please try again.");
 

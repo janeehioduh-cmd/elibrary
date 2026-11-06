@@ -3,15 +3,50 @@
 class Borrowing {
 
     private $conn;
+    private $borrowingLimit = 3;
 
     public function __construct($db) {
         $this->conn = $db;
     }
 
+    // Check how many books a member currently has
+    public function getActiveBorrowingCount($member_id) {
+
+        $sql = "SELECT COUNT(*) AS total
+                FROM borrowings
+                WHERE member_id = :member_id
+                AND status = 'borrowed'";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':member_id' => $member_id]);
+
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return (int) $result['total'];
+    }
+
+    // Check whether a member already has a pending request for this book
+    public function hasPendingRequest($book_id, $member_id) {
+
+        $sql = "SELECT COUNT(*)
+                FROM borrowings
+                WHERE book_id = :book_id
+                AND member_id = :member_id
+                AND status = 'pending'";
+
+        $stmt = $this->conn->prepare($sql);
+
+        $stmt->execute([
+            ':book_id' => $book_id,
+            ':member_id' => $member_id
+        ]);
+
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
     // Submit a borrowing request
     public function requestBook($book_id, $member_id, $pickup_date, $terms_agreed) {
 
-        // Check membership status
         $sql = "SELECT status FROM members WHERE id = :member_id";
 
         $stmt = $this->conn->prepare($sql);
@@ -23,7 +58,15 @@ class Borrowing {
             return false;
         }
 
-        // Check book availability
+        if ($this->getActiveBorrowingCount($member_id) >= $this->borrowingLimit) {
+            return false;
+        }
+
+        // Prevent duplicate pending requests
+        if ($this->hasPendingRequest($book_id, $member_id)) {
+            return false;
+        }
+
         $sql = "SELECT is_available FROM books WHERE id = :book_id";
 
         $stmt = $this->conn->prepare($sql);
@@ -35,12 +78,10 @@ class Borrowing {
             return false;
         }
 
-        // Check terms agreement
         if (!$terms_agreed) {
             return false;
         }
 
-        // Save request
         $sql = "INSERT INTO borrowings
                 (book_id, member_id, preferred_pickup_date, terms_agreed, status)
                 VALUES
@@ -85,11 +126,14 @@ class Borrowing {
                 return false;
             }
 
-            // Set due date to 14 days after borrowing
+            if ($this->getActiveBorrowingCount($request['member_id']) >= $this->borrowingLimit) {
+                $this->conn->rollBack();
+                return false;
+            }
+
             $borrow_date = date('Y-m-d');
             $due_date = date('Y-m-d', strtotime('+14 days'));
 
-            // Update borrowing
             $sql = "UPDATE borrowings
                     SET borrow_date = :borrow_date,
                         due_date = :due_date,
@@ -104,7 +148,6 @@ class Borrowing {
                 ':id' => $borrowing_id
             ]);
 
-            // Mark book unavailable
             $sql = "UPDATE books
                     SET is_available = 0
                     WHERE id = :book_id";
@@ -118,9 +161,11 @@ class Borrowing {
 
         } catch (Exception $e) {
 
-            $this->conn->rollBack();
-            return false;
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
 
+            return false;
         }
     }
 
@@ -146,7 +191,6 @@ class Borrowing {
                 return false;
             }
 
-            // Update borrowing record
             $sql = "UPDATE borrowings
                     SET return_date = CURDATE(),
                         status = 'returned'
@@ -155,7 +199,6 @@ class Borrowing {
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([':id' => $borrowing_id]);
 
-            // Make book available again
             $sql = "UPDATE books
                     SET is_available = 1
                     WHERE id = :book_id";
@@ -169,9 +212,11 @@ class Borrowing {
 
         } catch (Exception $e) {
 
-            $this->conn->rollBack();
-            return false;
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
 
+            return false;
         }
     }
 
@@ -206,18 +251,39 @@ class Borrowing {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-public function 
-rejectRequest($borrowing_id) {
+    // Get all overdue books
+    public function getOverdueBooks() {
 
-    $sql = "UPDATE borrowings
-            SET status = 'rejected'
-            WHERE id = :id AND status = 'pending'";
+        $sql = "SELECT borrowings.*,
+                       books.title,
+                       books.author,
+                       members.name AS member_name,
+                       DATEDIFF(CURDATE(), borrowings.due_date) AS days_overdue
+                FROM borrowings
+                JOIN books ON borrowings.book_id = books.id
+                JOIN members ON borrowings.member_id = members.id
+                WHERE borrowings.status = 'borrowed'
+                AND borrowings.due_date < CURDATE()
+                ORDER BY borrowings.due_date ASC";
 
-    $stmt = $this->conn->prepare($sql);
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
 
-    $stmt->execute([':id' => $borrowing_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-    return $stmt->rowCount() > 0;
+    // Reject borrowing request
+    public function rejectRequest($borrowing_id) {
+
+        $sql = "UPDATE borrowings
+                SET status = 'rejected'
+                WHERE id = :id AND status = 'pending'";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([':id' => $borrowing_id]);
+
+        return $stmt->rowCount() > 0;
+    }
+
 }
-
-}
+?>

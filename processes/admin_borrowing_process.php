@@ -4,6 +4,7 @@ session_start();
 
 require_once __DIR__ . "/../config/database.php";
 require_once __DIR__ . "/../classes/Borrowing.php";
+require_once __DIR__ . "/../classes/Fine.php";
 
 if (!isset($_SESSION['admin_id'])) {
     header("Location: ../admin/login.php");
@@ -26,6 +27,7 @@ $db = new Database();
 $conn = $db->connect();
 
 $borrowing = new Borrowing($conn);
+$fine = new Fine($conn);
 
 try {
 
@@ -47,10 +49,14 @@ try {
 
     } else {
 
+        // Save overdue fines before changing the borrowing status
+        $fine->updateOverdueFines();
+
+        // Record the book return
         $success = $borrowing->returnBook($borrowing_id);
 
         $message = $success
-            ? "Book returned successfully. The book is now available for other members."
+            ? "Book returned successfully. Any outstanding overdue fine has been saved. The book is now available for other members."
             : "Unable to record this return.";
     }
 
@@ -100,7 +106,7 @@ try {
 
                 <br><br>
 
-                <a href="dashboard.php" class="back-link">
+                <a href="../admin/dashboard.php" class="back-link">
                     Admin Dashboard
                 </a>
 

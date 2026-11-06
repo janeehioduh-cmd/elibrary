@@ -16,7 +16,6 @@ session_start();
 
 <body>
 
-    <!-- NAVIGATION -->
     <nav class="site-nav">
 
         <a href="index.php" class="brand">
@@ -36,8 +35,6 @@ session_start();
 
     </nav>
 
-
-    <!-- PAGE HEADER -->
     <section class="catalogue-hero">
 
         <h1>Create Your Account</h1>
@@ -46,8 +43,6 @@ session_start();
 
     </section>
 
-
-    <!-- REGISTRATION FORM -->
     <section class="section">
 
         <div class="details-card">
@@ -57,7 +52,6 @@ session_start();
             <form
                 action="processes/register_process.php"
                 method="POST"
-                enctype="multipart/form-data"
             >
 
                 <label for="name">Full Name</label>
@@ -71,7 +65,6 @@ session_start();
                     required
                 >
 
-
                 <label for="email">Email Address</label>
 
                 <input
@@ -83,7 +76,6 @@ session_start();
                     required
                 >
 
-
                 <label for="phone">Phone Number</label>
 
                 <input
@@ -94,7 +86,6 @@ session_start();
                     placeholder="Enter your phone number"
                     required
                 >
-
 
                 <label for="password">Password</label>
 
@@ -109,41 +100,20 @@ session_start();
 
                 <label for="confirm_password">Confirm Password</label>
 
-<input
-    type="password"
-    id="confirm_password"
-    name="confirm_password"
-    class="form-control"
-    placeholder="Confirm your password"
-    required
->
-
-
-                <!-- PROFILE PICTURE -->
-                <label for="profile_image">
-                    Profile Picture (Optional)
-                </label>
-
                 <input
-                    type="file"
-                    id="profile_image"
-                    name="profile_image"
+                    type="password"
+                    id="confirm_password"
+                    name="confirm_password"
                     class="form-control"
-                    accept="image/jpeg,image/png,image/webp"
+                    placeholder="Confirm your password"
+                    required
                 >
-
-                <p style="font-size: 13px; color: #705E52;">
-                    Upload a clear headshot. Accepted formats: JPG,
-                    PNG and WEBP.
-                </p>
-
 
                 <button type="submit" class="btn-gold">
                     Create Account
                 </button>
 
             </form>
-
 
             <p style="margin-top: 25px;">
 
@@ -157,8 +127,6 @@ session_start();
 
     </section>
 
-
-    <!-- FOOTER -->
     <footer class="site-footer">
 
         <h3>Otukpo E-Library</h3>

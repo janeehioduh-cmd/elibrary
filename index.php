@@ -1,4 +1,5 @@
 <?php
+
 require_once __DIR__ . "/config/database.php";
 require_once __DIR__ . "/classes/Book.php";
 require_once __DIR__ . "/classes/Category.php";
@@ -11,6 +12,21 @@ $category = new Category($conn);
 
 $books = $book->getAllBooks();
 $categories = $category->getAllCategories();
+
+// Get approved testimonials
+$testimonialQuery = $conn->prepare("
+    SELECT testimonials.message, members.name
+    FROM testimonials
+    INNER JOIN members
+        ON testimonials.member_id = members.id
+    WHERE testimonials.status = 'approved'
+    ORDER BY testimonials.id DESC
+");
+
+$testimonialQuery->execute();
+
+$testimonials = $testimonialQuery->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 
 <!DOCTYPE html>
@@ -22,6 +38,58 @@ $categories = $category->getAllCategories();
     <title>Otukpo E-Library</title>
 
     <link rel="stylesheet" href="assets/css/style.css">
+
+    <style>
+        .testimonials-section {
+            padding: 50px 20px;
+            background: #f5e9d5;
+            text-align: center;
+        }
+
+        .testimonials-section h2 {
+            color: #3B2418;
+            margin-bottom: 12px;
+        }
+
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 22px;
+            max-width: 1100px;
+            margin: 30px auto 0;
+        }
+
+        .testimonial-card {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+            text-align: left;
+        }
+
+        .testimonial-stars {
+            color: #D4AF37;
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        .testimonial-message {
+            color: #444;
+            line-height: 1.7;
+            margin-bottom: 18px;
+            overflow-wrap: anywhere;
+        }
+
+        .testimonial-author {
+            color: #3B2418;
+            font-weight: bold;
+        }
+
+        .testimonial-empty {
+            margin-top: 25px;
+            color: #555;
+        }
+    </style>
 </head>
 
 <body>
@@ -42,24 +110,72 @@ $categories = $category->getAllCategories();
 
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-content">
-            <p class="hero-label">WELCOME TO OTUKPO E-LIBRARY</p>
 
-            <h1>Discover the World Through Books</h1>
+        <div class="hero-overlay">
 
-            <p>
-                Explore knowledge, discover new ideas and borrow
-                books from the comfort of your home.
-            </p>
+            <div class="hero-content">
 
-            <a href="books.php" class="btn-gold">
-                Explore Our Books
-            </a>
+                <p class="hero-label">WELCOME TO</p>
+
+                <h1>OTUKPO E-LIBRARY</h1>
+
+                <div class="gold-line"></div>
+
+                <p class="hero-description">
+                    Explore a world of knowledge, discover inspiring books
+                    and expand your learning journey from anywhere.
+                </p>
+
+                <div class="hero-actions">
+
+                    <a href="books.php" class="btn-gold">
+                        Explore Our Books
+                    </a>
+
+                    <form method="GET" action="books.php" class="hero-search-form">
+
+                        <input
+                            type="text"
+                            name="search"
+                            placeholder="Search by title or author..."
+                        >
+
+                        <button type="submit">Search</button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
         </div>
+
+    </section>
+
+    <!-- Homepage Search -->
+    <section class="home-search">
+
+        <h2>Find Your Next Book</h2>
+
+        <p>Search our library by book title or author.</p>
+
+        <form method="GET" action="books.php" class="search-form">
+
+            <input
+                type="text"
+                name="search"
+                placeholder="Enter book title or author..."
+            >
+
+            <button type="submit">Search Books</button>
+
+        </form>
+
     </section>
 
     <!-- Categories -->
     <section class="section">
+
         <h2>Explore Book Categories</h2>
 
         <p class="section-description">
@@ -67,6 +183,7 @@ $categories = $category->getAllCategories();
         </p>
 
         <div class="category-list">
+
             <?php foreach ($categories as $row): ?>
 
                 <span class="category-chip">
@@ -74,7 +191,9 @@ $categories = $category->getAllCategories();
                 </span>
 
             <?php endforeach; ?>
+
         </div>
+
     </section>
 
     <!-- Available Books -->
@@ -125,13 +244,63 @@ $categories = $category->getAllCategories();
 
     </section>
 
+    <!-- MEMBER TESTIMONIALS -->
+    <section class="testimonials-section">
+
+        <h2>What Our Members Say</h2>
+
+        <p>
+            Hear from members who use Otukpo E-Library.
+        </p>
+
+        <?php if (!empty($testimonials)): ?>
+
+            <div class="testimonial-grid">
+
+                <?php foreach ($testimonials as $row): ?>
+
+                    <div class="testimonial-card">
+
+                        <div class="testimonial-stars">
+                            ★★★★★
+                        </div>
+
+                        <p class="testimonial-message">
+                            "<?php echo nl2br(htmlspecialchars($row['message'])); ?>"
+                        </p>
+
+                        <p class="testimonial-author">
+                            — <?php echo htmlspecialchars($row['name']); ?>
+                        </p>
+
+                    </div>
+
+                <?php endforeach; ?>
+
+            </div>
+
+        <?php else: ?>
+
+            <p class="testimonial-empty">
+                Our members' experiences will appear here soon.
+            </p>
+
+        <?php endif; ?>
+
+    </section>
+
     <!-- Footer -->
     <footer class="site-footer">
+
         <h3>Otukpo E-Library</h3>
 
         <p>Knowledge, Learning and Discovery.</p>
 
-        <p>&copy; <?php echo date('Y'); ?> Otukpo E-Library. All rights reserved.</p>
+        <p>
+            &copy; <?php echo date('Y'); ?>
+            Otukpo E-Library. All rights reserved.
+        </p>
+
     </footer>
 
 </body>

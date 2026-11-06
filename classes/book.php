@@ -24,6 +24,27 @@ class Book {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Search books by title or author
+    public function searchBooks($search) {
+
+        $sql = "SELECT books.*, categories.name AS category_name
+                FROM books
+                LEFT JOIN categories
+                ON books.category_id = categories.id
+                WHERE books.title LIKE :search
+                OR books.author LIKE :search";
+
+        $stmt = $this->conn->prepare($sql);
+
+        $keyword = "%" . $search . "%";
+
+        $stmt->execute([
+            ':search' => $keyword
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // Find one book by ID
     public function getBookById($id) {
 

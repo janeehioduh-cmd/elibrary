@@ -10,12 +10,14 @@ if (!isset($_SESSION['member_id'])) {
 require_once __DIR__ . "/config/database.php";
 require_once __DIR__ . "/classes/Member.php";
 require_once __DIR__ . "/classes/Borrowing.php";
+require_once __DIR__ . "/classes/Fine.php";
 
 $db = new Database();
 $conn = $db->connect();
 
 $member = new Member($conn);
 $borrowing = new Borrowing($conn);
+$fine = new Fine($conn);
 
 $memberDetails = $member->getMemberById($_SESSION['member_id']);
 
@@ -28,7 +30,17 @@ if (!$memberDetails || $memberDetails['status'] !== 'active') {
 
 $borrowings = $borrowing->getMemberBorrowings($_SESSION['member_id']);
 
-// Get profile picture
+$fine->updateOverdueFines();
+
+$totalFine = $fine->getMemberOutstandingFine($_SESSION['member_id']);
+
+$memberFines = $fine->getMemberFines($_SESSION['member_id']);
+
+$activeBorrowings = $borrowing->getActiveBorrowingCount($_SESSION['member_id']);
+
+$borrowingLimit = 3;
+$remainingBooks = max(0, $borrowingLimit - $activeBorrowings);
+
 $profileImage = $memberDetails['profile_image'] ?? null;
 
 $profileImagePath = "uploads/profiles/" . basename($profileImage ?? '');
@@ -70,7 +82,6 @@ $hasProfileImage = !empty($profileImage)
 
     </nav>
 
-
     <!-- PAGE HEADER -->
     <section class="catalogue-hero">
 
@@ -83,14 +94,12 @@ $hasProfileImage = !empty($profileImage)
 
     </section>
 
-
     <!-- DASHBOARD CONTENT -->
     <section class="section">
 
         <div class="details-card">
 
             <h2>My Account</h2>
-
 
             <!-- PROFILE PICTURE -->
             <div class="profile-section">
@@ -110,7 +119,6 @@ $hasProfileImage = !empty($profileImage)
                     </div>
 
                 <?php endif; ?>
-
 
                 <h3>
                     <?php echo htmlspecialchars($memberDetails['name']); ?>
@@ -145,36 +153,146 @@ $hasProfileImage = !empty($profileImage)
 
             </div>
 
-
             <!-- ACCOUNT INFORMATION -->
             <div class="account-info">
 
                 <p>
                     <strong>Full Name:</strong>
-
                     <?php echo htmlspecialchars($memberDetails['name']); ?>
                 </p>
 
                 <p>
                     <strong>Email:</strong>
-
                     <?php echo htmlspecialchars($memberDetails['email']); ?>
                 </p>
 
                 <p>
                     <strong>Phone:</strong>
-
                     <?php echo htmlspecialchars($memberDetails['phone']); ?>
                 </p>
 
                 <p>
                     <strong>Account Status:</strong>
-
                     <span class="available">Active</span>
                 </p>
 
             </div>
 
+            <!-- BORROWING LIMIT SUMMARY -->
+            <div class="borrowing-limit">
+
+                <h2>My Borrowing Allowance</h2>
+
+                <div class="borrowing-count">
+                    <?php echo $activeBorrowings; ?>
+                    /
+                    <?php echo $borrowingLimit; ?>
+                </div>
+
+                <p>Books currently borrowed</p>
+
+                <p>
+                    <strong><?php echo $remainingBooks; ?></strong>
+                    borrowing slot(s) remaining.
+                </p>
+
+                <?php if ($activeBorrowings >= $borrowingLimit): ?>
+
+                    <p class="limit-warning">
+                        You have reached your borrowing limit.
+                        Please return a book before requesting another.
+                    </p>
+
+                <?php else: ?>
+
+                    <p class="limit-success">
+                        You can borrow
+                        <?php echo $remainingBooks; ?>
+                        more book(s).
+                    </p>
+
+                <?php endif; ?>
+
+            </div>
+
+            <!-- OUTSTANDING FINES -->
+            <div class="borrowing-limit">
+
+                <h2>My Outstanding Fines</h2>
+
+                <div class="borrowing-count">
+                    ₦<?php echo number_format($totalFine, 2); ?>
+                </div>
+
+                <p>Fine rate: ₦500 per overdue day.</p>
+
+                <?php if ($totalFine > 0): ?>
+
+                    <p class="limit-warning">
+                        You have unpaid fines. Please contact the library administrator about your fine.
+                    </p>
+
+                <?php else: ?>
+
+                    <p class="limit-success">
+                        You currently have no outstanding fines.
+                    </p>
+
+                <?php endif; ?>
+
+            </div>
+
+            <!-- FINE PAYMENT HISTORY -->
+            <div class="borrowing-limit">
+
+                <h2>My Fine History</h2>
+
+                <?php if (!empty($memberFines)): ?>
+
+                    <?php foreach ($memberFines as $row): ?>
+
+                        <div class="borrowing-card">
+
+                            <h3>
+                                <?php echo htmlspecialchars($row['title']); ?>
+                            </h3>
+
+                            <p>
+                                <strong>Fine Amount:</strong>
+                                ₦<?php echo number_format($row['amount'], 2); ?>
+                            </p>
+
+                            <p>
+                                <strong>Payment Status:</strong>
+
+                                <?php if ($row['status'] === 'paid'): ?>
+
+                                    <span class="limit-success">Paid</span>
+
+                                <?php else: ?>
+
+                                    <span class="limit-warning">Unpaid</span>
+
+                                <?php endif; ?>
+
+                            </p>
+
+                            <p>
+                                <strong>Payment Date:</strong>
+                                <?php echo htmlspecialchars($row['paid_at'] ?? 'Not paid'); ?>
+                            </p>
+
+                        </div>
+
+                    <?php endforeach; ?>
+
+                <?php else: ?>
+
+                    <p>You have no fine records yet.</p>
+
+                <?php endif; ?>
+
+            </div>
 
             <!-- BORROWING ACTIVITIES -->
             <h2>My Borrowing Activities</h2>
@@ -195,7 +313,6 @@ $hasProfileImage = !empty($profileImage)
 
                             <p>
                                 <strong>Author:</strong>
-
                                 <?php echo htmlspecialchars($row['author']); ?>
                             </p>
 
@@ -209,14 +326,17 @@ $hasProfileImage = !empty($profileImage)
 
                             <p>
                                 <strong>Borrow Date:</strong>
-
                                 <?php echo htmlspecialchars($row['borrow_date'] ?? 'Not yet approved'); ?>
                             </p>
 
                             <p>
                                 <strong>Due Date:</strong>
-
                                 <?php echo htmlspecialchars($row['due_date'] ?? 'Not yet approved'); ?>
+                            </p>
+
+                            <p>
+                                <strong>Return Date:</strong>
+                                <?php echo htmlspecialchars($row['return_date'] ?? 'Not yet returned'); ?>
                             </p>
 
                         </div>
@@ -231,6 +351,21 @@ $hasProfileImage = !empty($profileImage)
 
             <?php endif; ?>
 
+            <!-- SHARE YOUR EXPERIENCE -->
+            <div class="borrowing-limit">
+
+                <h2>Share Your Experience</h2>
+
+                <p>
+                    Tell us what you think about Otukpo E-Library.
+                    Your feedback can help us improve our services.
+                </p>
+
+                <a href="submit_testimonial.php" class="btn-gold">
+                    Share Your Experience
+                </a>
+
+            </div>
 
             <a href="books.php" class="book-link">
                 Browse Books
@@ -239,7 +374,6 @@ $hasProfileImage = !empty($profileImage)
         </div>
 
     </section>
-
 
     <!-- FOOTER -->
     <footer class="site-footer">

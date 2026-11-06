@@ -25,7 +25,38 @@ $books = $book->getAllBooks();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Books | Otukpo E-Library</title>
     <link rel="stylesheet" href="../assets/css/style.css">
+
+    <style>
+        .book-cover-preview {
+            width: 65px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #d4af37;
+        }
+
+        .book-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .book-actions form {
+            margin: 0;
+        }
+
+        .book-actions a {
+            display: inline-block;
+        }
+
+        .manage-images-link {
+            color: #8a6410;
+            font-weight: bold;
+        }
+    </style>
 </head>
+
 <body>
 
     <nav class="site-nav">
@@ -52,9 +83,11 @@ $books = $book->getAllBooks();
         <div class="admin-table-wrapper">
 
             <table class="admin-table">
+
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Cover</th>
                         <th>Book Title</th>
                         <th>Author</th>
                         <th>Category</th>
@@ -70,11 +103,30 @@ $books = $book->getAllBooks();
                         <?php foreach ($books as $row): ?>
 
                             <tr>
-                                <td><?php echo htmlspecialchars($row['id']); ?></td>
 
-                                <td><?php echo htmlspecialchars($row['title']); ?></td>
+                                <td>
+                                    <?php echo htmlspecialchars($row['id']); ?>
+                                </td>
 
-                                <td><?php echo htmlspecialchars($row['author']); ?></td>
+                                <td>
+                                    <?php if (!empty($row['cover_image'])): ?>
+                                        <img
+                                            src="../<?php echo htmlspecialchars($row['cover_image']); ?>"
+                                            alt="Book cover"
+                                            class="book-cover-preview"
+                                        >
+                                    <?php else: ?>
+                                        📖
+                                    <?php endif; ?>
+                                </td>
+
+                                <td>
+                                    <?php echo htmlspecialchars($row['title']); ?>
+                                </td>
+
+                                <td>
+                                    <?php echo htmlspecialchars($row['author']); ?>
+                                </td>
 
                                 <td>
                                     <?php echo htmlspecialchars($row['category_name'] ?? 'Uncategorized'); ?>
@@ -88,28 +140,43 @@ $books = $book->getAllBooks();
                                     <?php endif; ?>
                                 </td>
 
-                                <td class="action-links">
+                                <td>
 
-                                    <a href="edit_book.php?id=<?php echo $row['id']; ?>">
-                                        Edit
-                                    </a>
+                                    <div class="book-actions">
 
-                                    <form action="../processes/admin_book_process.php"
-                                          method="POST"
-                                          onsubmit="return confirm('Are you sure you want to delete this book?');">
+                                        <a href="edit_book.php?id=<?php echo (int)$row['id']; ?>">
+                                            Edit
+                                        </a>
 
-                                        <input type="hidden" name="action" value="delete">
+                                        <a class="manage-images-link"
+                                           href="manage_book_images.php?id=<?php echo (int)$row['id']; ?>">
+                                            Manage Images
+                                        </a>
 
-                                        <input type="hidden" name="id"
-                                               value="<?php echo $row['id']; ?>">
+                                        <form
+                                            action="../processes/admin_book_process.php"
+                                            method="POST"
+                                            onsubmit="return confirm('Are you sure you want to permanently delete this book?');"
+                                        >
 
-                                        <button type="submit" class="delete-btn">
-                                            Delete
-                                        </button>
+                                            <input type="hidden" name="action" value="delete">
 
-                                    </form>
+                                            <input
+                                                type="hidden"
+                                                name="id"
+                                                value="<?php echo (int)$row['id']; ?>"
+                                            >
+
+                                            <button type="submit" class="delete-btn">
+                                                Delete
+                                            </button>
+
+                                        </form>
+
+                                    </div>
 
                                 </td>
+
                             </tr>
 
                         <?php endforeach; ?>
@@ -117,12 +184,15 @@ $books = $book->getAllBooks();
                     <?php else: ?>
 
                         <tr>
-                            <td colspan="6">No books have been added yet.</td>
+                            <td colspan="7">
+                                No books have been added yet.
+                            </td>
                         </tr>
 
                     <?php endif; ?>
 
                 </tbody>
+
             </table>
 
         </div>
